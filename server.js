@@ -4,6 +4,8 @@ const bodyParser = require('body-parser');
 const { Pool, Client } = require('pg');
 const morgan = require('morgan');
 const jwt = require('jsonwebtoken');
+const axios = require('axios');
+
 require('dotenv').config();
 
 app.use(express.static('public'));
@@ -20,12 +22,7 @@ const pool = new Pool({
   port: 5432,
 });
 
-// pool.query('SELECT * from users', (err, res) => {
-//   console.log(err, res);
-//   //pool.end()
-// });
-
-app.post("/authenticate", function(req, res){ 
+app.post("/authenticate", function(req, resp){ 
   pool.connect().then((client, done)=>{
     client.query(`select * from users where email='${req.body.email}'`).then((res)=>{
       //can put more claims into this user obj
@@ -35,7 +32,7 @@ app.post("/authenticate", function(req, res){
       var token = jwt.sign(user, app.get('superSecret'), {
         //expiresInMinutes: 1440 // expires in 24 hours, no longer valid, probs deprecated
       });
-      res.json({
+      resp.json({
         message:"success",
         token:token
       });
@@ -43,8 +40,38 @@ app.post("/authenticate", function(req, res){
   }, (err)=>{
     console.log(err);
   });
-  res.json('dude');
+//  res.json('dude');
 });
+
+app.get('/waterings', (req, res)=>{
+  pool.connect().then((client, done)=>{
+    client.query(`select * from waterings`).then((dBRes)=>{
+      console.log(dBRes.rows);
+      res.json(dBRes.rows);
+    }, (e)=>{
+      res.json(e);
+    });
+  });
+});
+
+app.get('/test', (req, res)=>{
+  res.json('f');
+});
+
+//TODO: put all routing in a seperate file
+
+app.post('/waterings', (req, res)=>{
+  pool.connect().then((client, done) => {
+    client.query(`insert into durations (total_duration) values ( ${req.body.duration}) returning *`).then((durationDbRes)=>{
+      let durationId = durationDbRes.rows[0].did;
+      client.query(`insert into waterings (start, zones, duration) values ('${req.body.start}', '{3, 4}', '${durationId}') returning *`).then((dbRes) => {
+        res.json('inserted dude');
+      });
+    });
+  });
+});
+
+//now i need what, a join? is that what I'm trying to do...
 
 app.get("/", function(req, res) {
   res.sendfile('index.html');
