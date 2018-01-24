@@ -5,7 +5,7 @@ const { Pool, Client } = require('pg');
 const morgan = require('morgan');
 const jwt = require('jsonwebtoken');
 const axios = require('axios');
-
+const camelcaseKeys = require('camelcase-keys');
 require('dotenv').config();
 
 app.use(express.static('public'));
@@ -40,14 +40,14 @@ app.post("/authenticate", function(req, resp){
   }, (err)=>{
     console.log(err);
   });
-//  res.json('dude');
 });
+
+
 
 app.get('/waterings', (req, res)=>{
   pool.connect().then((client, done)=>{
     client.query(`select * from waterings inner join durations on waterings.duration = durations.did`).then((dBRes)=>{
-      console.log(dBRes.rows);
-      res.json(dBRes.rows);
+      res.json(camelcaseKeys(dBRes.rows));
     }, (e)=>{
       res.json(e);
     });
@@ -65,7 +65,7 @@ app.post('/waterings', (req, res)=>{
     client.query(`insert into durations (total_duration) values ( ${req.body.duration}) returning *`).then((durationDbRes)=>{
       let durationId = durationDbRes.rows[0].did;
       client.query(`insert into waterings (start, zones, duration) values ('${req.body.start}', '{3, 4}', '${durationId}') returning *`).then((dbRes) => {
-        res.json('inserted dude');
+        res.json(dbRes.rows);
       });
     });
   });
