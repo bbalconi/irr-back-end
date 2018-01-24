@@ -24,6 +24,7 @@ const pool = new Pool({
 
 app.post("/authenticate", function(req, resp){ 
   pool.connect().then((client, done)=>{
+    console.log('pool connected')
     client.query(`select * from users where email='${req.body.email}'`).then((res)=>{
       //can put more claims into this user obj
       var user = {
@@ -42,15 +43,22 @@ app.post("/authenticate", function(req, resp){
   });
 });
 
-
-
 app.get('/waterings', (req, res)=>{
+  //this sux rewrite with async await
   pool.connect().then((client, done)=>{
     client.query(`select * from waterings inner join durations on waterings.duration = durations.did`).then((dBRes)=>{
       res.json(camelcaseKeys(dBRes.rows));
+      client.release();
     }, (e)=>{
       res.json(e);
+      client.release();
+    }, (e)=>{
+      res.json(e);
+      client.release();
     });
+  }, (e)=>{
+    res.json(e);
+    client.release;
   });
 });
 
