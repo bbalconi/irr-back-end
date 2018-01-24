@@ -45,7 +45,7 @@ app.post("/authenticate", function(req, resp){
 
 app.get('/waterings', (req, res)=>{
   pool.connect().then((client, done)=>{
-    client.query(`select * from waterings`).then((dBRes)=>{
+    client.query(`select * from waterings inner join durations on waterings.duration = durations.did`).then((dBRes)=>{
       console.log(dBRes.rows);
       res.json(dBRes.rows);
     }, (e)=>{
@@ -70,9 +70,6 @@ app.post('/waterings', (req, res)=>{
     });
   });
 });
-
-//now i need what, a join? is that what I'm trying to do...
-
 app.get("/", function(req, res) {
   res.sendfile('index.html');
 });
