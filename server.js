@@ -43,10 +43,65 @@ app.post("/authenticate", function(req, resp){
   });
 });
 
-app.get('/waterings', (req, res)=>{
-  //this sux rewrite with async await
+
+app.post('/weeklyWaterings', (req, res)=>{
+  // pool.connect().then((client, done)=>{
+  //   client.query(`select * from waterings inner join durations on waterings.duration = durations.did`).then((dBRes)=>{
+  //     res.json(camelcaseKeys(dBRes.rows));
+  //     client.release();
+  //   }, (e)=>{
+  //     res.json(e);
+  //     client.release();
+  //   }, (e)=>{
+  //     res.json(e);
+  //     client.release();
+  //   });
+  // }, (e)=>{
+  //   res.json(e);
+  //   client.release;
+  // });
+});
+
+app.post('/monthlyWaterings', (req, res)=>{
+  // pool.connect().then((client, done)=>{
+  //   client.query(`select * from waterings inner join durations on waterings.duration = durations.did`).then((dBRes)=>{
+  //     res.json(camelcaseKeys(dBRes.rows));
+  //     client.release();
+  //   }, (e)=>{
+  //     res.json(e);
+  //     client.release();
+  //   }, (e)=>{
+  //     res.json(e);
+  //     client.release();
+  //   });
+  // }, (e)=>{
+  //   res.json(e);
+  //   client.release;
+  // });
+});
+
+app.post('/dailyWaterings', (req, res)=>{
   pool.connect().then((client, done)=>{
-    client.query(`select * from waterings inner join durations on waterings.duration = durations.did`).then((dBRes)=>{
+    client.query(`select * from waterings where start_time >= '${req.body.startTime}' and end_time <= '${req.body.endTime}'`).then((dBRes)=>{
+      res.json(camelcaseKeys(dBRes.rows));
+      client.release();
+    }, (e)=>{
+      res.json(e);
+      client.release();
+    }, (e)=>{
+      res.json(e);
+      client.release();
+    });
+  }, (e)=>{
+    res.json(e);
+    client.release();
+  });
+});
+
+app.get('/waterings', (req, res)=>{
+  //TODO: this sux rewrite with async await
+  pool.connect().then((client, done)=>{
+    client.query(`select * from waterings inner join durations on waterings.duration_id = durations.did`).then((dBRes)=>{
       res.json(camelcaseKeys(dBRes.rows));
       client.release();
     }, (e)=>{
@@ -67,14 +122,20 @@ app.get('/test', (req, res)=>{
 });
 
 //TODO: put all routing in a seperate file
-
 app.post('/waterings', (req, res)=>{
   pool.connect().then((client, done) => {
     client.query(`insert into durations (total_duration) values ( ${req.body.duration}) returning *`).then((durationDbRes)=>{
       let durationId = durationDbRes.rows[0].did;
-      client.query(`insert into waterings (start, zones, duration) values ('${req.body.start}', '{3, 4}', '${durationId}') returning *`).then((dbRes) => {
+      client.query(`insert into waterings (start_time, zones, duration_id, end_time) values ('${req.body.start}', '{3, 4}', '${durationId}', '${req.body.end}') returning *`).then((dbRes) => {
         res.json(dbRes.rows);
+        client.release();
+      }, (e)=>{
+        res.json(e);
       });
+    }, (e)=>{
+      res.json(e);
+    }, (e)=>{
+      res.json(e);
     });
   });
 });
