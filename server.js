@@ -6,6 +6,7 @@ const morgan = require('morgan');
 const jwt = require('jsonwebtoken');
 const axios = require('axios');
 const camelcaseKeys = require('camelcase-keys');
+const moment = require('moment');
 require('dotenv').config();
 
 app.use(express.static('public'));
@@ -22,9 +23,8 @@ const pool = new Pool({
   port: 5432,
 });
 
-app.post("/authenticate", function(req, resp){ 
+app.post('/authenticate', function(req, resp){ 
   pool.connect().then((client, done)=>{
-    console.log('pool connected')
     client.query(`select * from users where email='${req.body.email}'`).then((res)=>{
       //can put more claims into this user obj
       var user = {
@@ -43,46 +43,30 @@ app.post("/authenticate", function(req, resp){
   });
 });
 
-
-app.post('/weeklyWaterings', (req, res)=>{
-  // pool.connect().then((client, done)=>{
-  //   client.query(`select * from waterings inner join durations on waterings.duration = durations.did`).then((dBRes)=>{
-  //     res.json(camelcaseKeys(dBRes.rows));
-  //     client.release();
-  //   }, (e)=>{
-  //     res.json(e);
-  //     client.release();
-  //   }, (e)=>{
-  //     res.json(e);
-  //     client.release();
-  //   });
-  // }, (e)=>{
-  //   res.json(e);
-  //   client.release;
-  // });
-});
-
-app.post('/monthlyWaterings', (req, res)=>{
-  // pool.connect().then((client, done)=>{
-  //   client.query(`select * from waterings inner join durations on waterings.duration = durations.did`).then((dBRes)=>{
-  //     res.json(camelcaseKeys(dBRes.rows));
-  //     client.release();
-  //   }, (e)=>{
-  //     res.json(e);
-  //     client.release();
-  //   }, (e)=>{
-  //     res.json(e);
-  //     client.release();
-  //   });
-  // }, (e)=>{
-  //   res.json(e);
-  //   client.release;
-  // });
+app.post('/updateSystem', (req, res)=>{
+  pool.connect().then((client, done)=>{
+    client.query(`insert into systems (name, location) values ${req.body.name}, ${req.body.location}`).then((dBRes)=>{
+      res.json(camelcaseKeys(dBRes.rows));
+      client.release();
+    }, (e)=>{
+      res.json(e);
+      client.release();
+    }, (e)=>{
+      res.json(e);
+      client.release();
+    });
+  }, (e)=>{
+    res.json(e);
+    client.release();
+  });
 });
 
 app.post('/dailyWaterings', (req, res)=>{
   pool.connect().then((client, done)=>{
-    client.query(`select * from waterings where start_time >= '${req.body.startTime}' and end_time <= '${req.body.endTime}'`).then((dBRes)=>{
+    client.query(`select * from waterings where actual_start_time >= '${req.body.startTime}' and actual_end_time <= '${req.body.endTime}'`).then((dBRes)=>{
+      dBRes.rows.forEach((w)=>{
+        w.duration = moment(w.actual_end_time).diff(w.actual_start_time, "milliseconds");
+      });
       res.json(camelcaseKeys(dBRes.rows));
       client.release();
     }, (e)=>{
@@ -117,16 +101,12 @@ app.get('/waterings', (req, res)=>{
   });
 });
 
-app.get('/test', (req, res)=>{
-  res.json('f');
-});
-
 //TODO: put all routing in a seperate file
 app.post('/waterings', (req, res)=>{
   pool.connect().then((client, done) => {
     client.query(`insert into durations (total_duration) values ( ${req.body.duration}) returning *`).then((durationDbRes)=>{
       let durationId = durationDbRes.rows[0].did;
-      client.query(`insert into waterings (start_time, zones, duration_id, end_time) values ('${req.body.start}', '{3, 4}', '${durationId}', '${req.body.end}') returning *`).then((dbRes) => {
+      client.query(`insert into waterings (start_time, zones, duration_id, end_time, actual_start_time, actual_end_time) values ('${req.body.start}', '{3, 4}', '${durationId}', '${req.body.end}', '${req.body.start}', '${req.body.end}') returning *`).then((dbRes) => {
         res.json(dbRes.rows);
         client.release();
       }, (e)=>{
@@ -139,6 +119,7 @@ app.post('/waterings', (req, res)=>{
     });
   });
 });
+
 app.get("/", function(req, res) {
   res.sendfile('index.html');
 });
