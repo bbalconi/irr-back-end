@@ -61,6 +61,92 @@ app.post('/updateSystem', (req, res)=>{
   });
 });
 
+app.post('/monthlyWaterings', (req, res)=>{
+  pool.connect().then((client, done)=>{
+    client.query(`select * from waterings`).then((dBRes)=>{
+      // totals is an array of objects that correspond to each month in a calendar year
+      // I like using this since moment.month() returns a 0-indexed int
+
+      let totals = [
+        {
+          totalDuration:0,
+          totalWaterUsage:0
+        },
+        {
+          totalDuration:0,
+          totalWaterUsage:0
+        },
+        {
+          totalDuration:0,
+          totalWaterUsage:0
+        },
+        {
+          totalDuration:0,
+          totalWaterUsage:0
+        
+        },
+        {
+          totalDuration:0,
+          totalWaterUsage:0
+        
+        },
+        {
+          totalDuration:0,
+          totalWaterUsage:0
+        },
+        {
+          totalDuration:0,
+          totalWaterUsage:0
+        },
+        {
+          totalDuration:0,
+          totalWaterUsage:0
+        },
+        {
+          totalDuration:0,
+          totalWaterUsage:0
+        },
+        {
+          totalDuration:0,
+          totalWaterUsage:0
+        },
+        {
+          totalDuration:0,
+          totalWaterUsage:0
+        },
+        {
+          totalDuration:0,
+          totalWaterUsage:0
+        }
+      ];
+
+      dBRes.rows.forEach((w)=>{
+        //TODO: support multi-day waterings
+        w.duration = moment(w.actual_end_time).diff(w.actual_start_time, "milliseconds");
+        let totalDuration = w.duration;
+        totals[moment(w.actual_end_time).month()].totalDuration += w.duration;
+      });
+      totals.forEach((t, i)=>{
+        t.totalWaterUsage = (t.totalDuration/ (60000 * 60) ) * 15;
+        t.month = moment().month(i).format("MMM");
+      });
+      console.log(totals);
+      res.json(totals);
+      client.release();
+    }, (e)=>{
+      res.json(e);
+      client.release();
+    }, (e)=>{
+      res.json(e);
+      client.release();
+    });
+  }, (e)=>{
+    res.json(e);
+    client.release();
+  });
+});
+
+
 app.post('/dailyWaterings', (req, res)=>{
   pool.connect().then((client, done)=>{
     client.query(`select * from waterings where actual_start_time >= '${req.body.startTime}' and actual_end_time <= '${req.body.endTime}'`).then((dBRes)=>{
