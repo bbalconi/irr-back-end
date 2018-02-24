@@ -23,6 +23,44 @@ const pool = new Pool({
   port: 5432,
 });
 
+// var verifyToken = (req, res, next)=>{
+//   jwt.verify(req.body.token, "hmmm", (err, decoded)=>{
+//     if (err){
+//       res.status(403);
+//     } else {
+//       next();
+//     }
+//   });
+// };
+
+app.post('/system',(req, res)=>{
+  pool.connect().then((client, done) => {
+    //this might not work but this is where to start.
+    //get this working, then populate some data into the zones table and viola! 
+    //you should see some shit populated in the /createSystem. Now just have
+    //the component update the zone table and we are good to go!
+    client.query(`select * from systems`).then((system) => {
+      client.query(`select * from zones`).then((zones) => {
+        var response = {
+          system: system.rows[0],
+          zones: zones.rows
+        };
+        res.json(response);
+        client.release();
+      }, (e) => {
+        res.json(e);
+        client.release();
+      }, (e) => {
+        res.json(e);
+        client.release();
+      });
+    }, (e) => {
+      res.json(e);
+      client.release();
+    });
+  });
+});
+
 app.post('/authenticate', function(req, resp){ 
   pool.connect().then((client, done)=>{
     client.query(`select * from users where email='${req.body.email}'`).then((res)=>{
@@ -43,9 +81,12 @@ app.post('/authenticate', function(req, resp){
   });
 });
 
+//currently doing - trying to get the zones and descriptions into the systems table. Then, I can pull out the number of zones
+//for the water usage by zones for the reporting...
+
 app.post('/updateSystem', (req, res)=>{
   pool.connect().then((client, done)=>{
-    client.query(`insert into systems (name, location) values ${req.body.name}, ${req.body.location}`).then((dBRes)=>{
+    client.query(`insert into systems (name, location) values ('${req.body.name}', '${req.body.location}')`).then((dBRes)=>{
       res.json(camelcaseKeys(dBRes.rows));
       client.release();
     }, (e)=>{
@@ -130,7 +171,6 @@ app.post('/monthlyWaterings', (req, res)=>{
         t.totalWaterUsage = (t.totalDuration/ (60000 * 60) ) * 15;
         t.month = moment().month(i).format("MMM");
       });
-      console.log(totals);
       res.json(totals);
       client.release();
     }, (e)=>{
@@ -145,6 +185,35 @@ app.post('/monthlyWaterings', (req, res)=>{
     client.release();
   });
 });
+
+app.post('/zoneUsage', (req, res)=>{
+  pool.connect().then((client, done)=>{
+    var zoneData = client.query(`select * from systems`);
+    var waterings = client.query(`select * from waterings`);
+    Promise.all([zoneData, waterings]).then((values)=>{
+      res.json(values);
+    });
+  });
+
+  //   client.query(`select * from waterings where actual_start_time >= '${req.body.startTime}' and actual_end_time <= '${req.body.endTime}'`).then((dBRes)=>{
+  //     dBRes.rows.forEach((w)=>{
+  //       w.duration = moment(w.actual_end_time).diff(w.actual_start_time, "milliseconds");
+  //     });
+  //     res.json(camelcaseKeys(dBRes.rows));
+  //     client.release();
+  //   }, (e)=>{
+  //     res.json(e);
+  //     client.release();
+  //   }, (e)=>{
+  //     res.json(e);
+  //     client.release();
+  //   });
+  // }, (e)=>{
+  //   res.json(e);
+  //   client.release();
+  // });
+});
+
 
 
 app.post('/dailyWaterings', (req, res)=>{
@@ -167,6 +236,8 @@ app.post('/dailyWaterings', (req, res)=>{
     client.release();
   });
 });
+
+//system_id, description, zone_number
 
 app.get('/waterings', (req, res)=>{
   //TODO: this sux rewrite with async await
